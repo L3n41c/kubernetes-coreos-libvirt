@@ -1,0 +1,6 @@
+<network>
+  <name>kubernetes_2</name>
+  <bridge name='virbr_kub2' stp='on' delay='0'/>
+  <ip address='10.10.0.1' netmask='255.0.0.0'>
+  </ip>
+</network>

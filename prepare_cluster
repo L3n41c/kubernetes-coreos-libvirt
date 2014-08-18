@@ -1,0 +1,49 @@
+#!/bin/bash
+
+set -e
+
+export LIBVIRT_DEFAULT_URI=qemu:///system
+POOL=default
+
+cd "$(dirname $0)"
+
+POOL_PATH=$(virsh pool-dumpxml $POOL | xmllint --xpath "/pool/target/path/child::text()" -)
+POOL_TYPE=$(virsh pool-dumpxml $POOL | xmllint --xpath "/pool/attribute::type" -)
+
+if [ "$POOL_TYPE" != " type=\"dir\"" ]; then
+    echo "This script works only if the $POOL storage pool is of type: dir"
+    exit 1
+fi
+
+#
+# Enable KSM
+#
+echo 1 > /sys/kernel/mm/ksm/run
+
+#
+# Download a pristine qemu image of CoreOS
+#
+wget -N -P "$POOL_PATH" http://alpha.release.core-os.net/amd64-usr/current/coreos_production_qemu_image.img.bz2
+bunzip2 -f "$POOL_PATH/coreos_production_qemu_image.img.bz2"
+
+#
+# Download kubernetes
+#
+kub_path="$POOL_PATH/kubernetes/bin"
+mkdir -p "$kub_path"
+wget -N -P "$kub_path" http://storage.googleapis.com/kubernetes/apiserver
+wget -N -P "$kub_path" http://storage.googleapis.com/kubernetes/controller-manager
+wget -N -P "$kub_path" http://storage.googleapis.com/kubernetes/kubecfg
+wget -N -P "$kub_path" http://storage.googleapis.com/kubernetes/kubelet
+wget -N -P "$kub_path" http://storage.googleapis.com/kubernetes/proxy
+chmod +x "$kub_path/apiserver"
+chmod +x "$kub_path/controller-manager"
+chmod +x "$kub_path/kubecfg"
+chmod +x "$kub_path/kubelet"
+chmod +x "$kub_path/proxy"
+
+#
+# Create a CoreOS config drive
+#
+mkdir -p "$POOL_PATH/coreos_configdrive"
+chmod 777 "$POOL_PATH/coreos_configdrive"

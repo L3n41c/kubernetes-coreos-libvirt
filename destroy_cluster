@@ -1,0 +1,21 @@
+#!/bin/bash
+
+export LIBVIRT_DEFAULT_URI=qemu:///system
+POOL=default
+
+POOL_PATH=$(virsh pool-dumpxml $POOL | xmllint --xpath "/pool/target/path/child::text()" -)
+
+i=1
+while virsh destroy coreos$(printf "%02d" $i) 2> /dev/null; do
+    ((i++))
+done
+
+i=1
+while virsh vol-delete coreos$(printf "%02d" $i).img --pool $POOL 2> /dev/null; do
+    ((i++))
+done
+
+virsh net-destroy kubernetes_1 2> /dev/null
+virsh net-destroy kubernetes_2 2> /dev/null
+
+rm -rf "$POOL_PATH"/coreos_configdrive/coreos*

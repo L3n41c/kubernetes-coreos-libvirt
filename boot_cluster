@@ -1,0 +1,69 @@
+#!/bin/bash
+
+set -e
+
+export LIBVIRT_DEFAULT_URI=qemu:///system
+NB_INST=5
+POOL=default
+
+cd "$(dirname $0)"
+
+POOL_PATH=$(virsh pool-dumpxml $POOL | xmllint --xpath "/pool/target/path/child::text()" -)
+
+#
+# Check that we already have a pristine qemu image of CoreOS
+#
+virsh pool-refresh $POOL > /dev/null
+if ! virsh vol-list $POOL | grep -q coreos_production_qemu_image.img; then
+    POOL_TYPE=$(virsh pool-dumpxml $POOL | xmllint --xpath "/pool/attribute::type" -)
+    if [ "$POOL_TYPE" != " type=\"dir\"" ]; then
+        echo "coreos_production_qemu_image.img volume doesn’t exist in the “$POOL” storage pool" >&2
+        exit 1
+    fi
+    echo "Please run the following command (may require root privileges):"
+    echo "curl http://alpha.release.core-os.net/amd64-usr/current/coreos_production_qemu_image.img.bz2 | bzcat > \"$POOL_PATH/coreos_production_qemu_image.img\""
+    exit 1
+fi
+
+#
+# Check that we have rights to create user_data
+#
+if [ ! -w "$POOL_PATH/coreos_configdrive" ]; then
+    echo "Please run the following command (may require root privileges):"
+    echo "mkdir \"$POOL_PATH/coreos_configdrive\""
+    echo "chmod 777 \"$POOL_PATH/coreos_configdrive\""
+    exit 1
+fi
+
+#
+# Create the networks
+#
+virsh net-create network_kubernetes_1.xml
+virsh net-create network_kubernetes_2.xml
+
+#
+# Create the VMs
+#
+discovery=$(curl -s https://discovery.etcd.io/new)
+
+rm -rf .run
+mkdir .run
+for (( i = 1 ; i <= $NB_INST ; i++ )); do
+    name=coreos$(printf "%02d" $i)
+    image="$POOL_PATH/$name.img"
+    config="$POOL_PATH/coreos_configdrive/$name"
+    kub_path="$POOL_PATH/kubernetes"
+    machines="$(echo -n '192.168.10.1'; for (( i = 2 ; i <= $NB_INST ; i++ )); do echo -n ",192.168.10.$i"; done)"
+
+    virsh vol-clone coreos_production_qemu_image.img $name.img --pool $POOL
+    sed -e "s|%N%|$i|; s|%NAME%|$name|; s|%IMAGE%|$image|; s|%CONFIG%|$config|; s|%KUB_PATH%|$kub_path|" < coreos.xml > .run/$name.xml
+    mkdir -p "$config/openstack/latest"
+    sed -e "s|%N%|$i|; s|%NAME%|$name|; s|%SSH_KEYS%|$(cat ~/.ssh/id_*.pub | sed 's/^/  - /')|; s|%DISCOVERY%|$discovery|; s|%MACHINES%|$machines|" < user_data.yml | \
+    ( if [ $i -eq 1 ]; then
+        egrep -v "^%(END)?IF MASTER%$" ;
+      else
+        awk 'BEGIN {inside=0} /^%IF MASTER%$/ {inside=1} !inside {print} /^%ENDIF MASTER%$/ {inside=0}'
+      fi ) > "$config/openstack/latest/user_data"
+
+    virsh create .run/$name.xml
+done
