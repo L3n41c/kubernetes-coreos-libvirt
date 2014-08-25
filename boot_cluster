@@ -3,8 +3,9 @@
 set -e
 
 export LIBVIRT_DEFAULT_URI=qemu:///system
-NB_INST=5
 POOL=default
+
+NB_INST=${1:-5}
 
 cd "$(dirname $0)"
 
