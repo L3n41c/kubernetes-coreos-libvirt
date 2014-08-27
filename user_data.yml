@@ -77,7 +77,7 @@ coreos:
 
         [Service]
         ExecStartPre=/bin/mount --make-rprivate /
-        ExecStart=/usr/bin/docker -d -s=btrfs -H fd:// -b cbr0 --iptables=false
+        ExecStart=/opt/docker/bin/docker -d -s=btrfs -H fd:// -b cbr0 --iptables=false
 
         [Install]
         WantedBy=multi-user.target
@@ -90,6 +90,17 @@ coreos:
         [Mount]
         What=kubernetes
         Where=/opt/kubernetes
+        Options=ro,trans=virtio,version=9p2000.L
+        Type=9p
+    - name: opt-docker.mount
+      command: start
+      content: |
+        [Unit]
+        ConditionVirtualization=|vm
+
+        [Mount]
+        What=docker
+        Where=/opt/docker
         Options=ro,trans=virtio,version=9p2000.L
         Type=9p
 %IF MASTER%

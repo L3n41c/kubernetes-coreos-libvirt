@@ -54,10 +54,11 @@ for (( i = 1 ; i <= $NB_INST ; i++ )); do
     image="$POOL_PATH/$name.img"
     config="$POOL_PATH/coreos_configdrive/$name"
     kub_path="$POOL_PATH/kubernetes"
+    docker_path="$POOL_PATH/docker"
     machines="$(echo -n '192.168.10.1'; for (( i = 2 ; i <= $NB_INST ; i++ )); do echo -n ",192.168.10.$i"; done)"
 
     virsh vol-clone coreos_production_qemu_image.img $name.img --pool $POOL
-    sed -e "s|%N%|$i|; s|%NAME%|$name|; s|%IMAGE%|$image|; s|%CONFIG%|$config|; s|%KUB_PATH%|$kub_path|" < coreos.xml > .run/$name.xml
+    sed -e "s|%N%|$i|; s|%NAME%|$name|; s|%IMAGE%|$image|; s|%CONFIG%|$config|; s|%KUB_PATH%|$kub_path|; s|%DOCKER_PATH%|$docker_path|" < coreos.xml > .run/$name.xml
     mkdir -p "$config/openstack/latest"
     sed -e "s|%N%|$i|; s|%NAME%|$name|; s|%SSH_KEYS%|$(cat ~/.ssh/id_*.pub | sed 's/^/  - /')|; s|%DISCOVERY%|$discovery|; s|%MACHINES%|$machines|" < user_data.yml | \
     ( if [ $i -eq 1 ]; then
