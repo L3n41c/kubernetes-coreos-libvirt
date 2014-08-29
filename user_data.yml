@@ -71,16 +71,34 @@ coreos:
       command: start
       content: |
         [Unit]
-        After=network.target
+        After=network.target docker.socket docker-tcp.socket
         Description=Docker Application Container Engine
         Documentation=http://docs.docker.io
+        Requires=docker.socket docker-tcp.socket
 
         [Service]
+        Environment="TMPDIR=/var/tmp/"
+        LimitNOFILE=1048576
+        LimitNPROC=1048576
         ExecStartPre=/bin/mount --make-rprivate /
-        ExecStart=/usr/bin/docker -d -s=btrfs -H fd:// -b cbr0 --iptables=false
+        ExecStart=/usr/bin/docker --daemon --storage-driver=btrfs --host=fd:// --bridge=cbr0 --iptables=false
 
         [Install]
         WantedBy=multi-user.target
+    - name: docker-tcp.socket
+      command: start
+      enable: yes
+      content: |
+        [Unit]
+        Description=Docker Socket for the API
+
+        [Socket]
+        ListenStream=2375
+        BindIPv6Only=both
+        Service=docker.service
+
+        [Install]
+        WantedBy=sockets.target
     - name: opt-kubernetes.mount
       command: start
       content: |
