@@ -60,7 +60,7 @@ coreos:
         Description=NAT non container traffic
 
         [Service]
-        ExecStart=/usr/sbin/iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE ! -d 10.0.0.0/8
+        ExecStart=/usr/sbin/iptables -w -t nat -A POSTROUTING -o eth0 -j MASQUERADE ! -d 10.0.0.0/8
         RemainAfterExit=yes
         Type=oneshot
     - name: etcd.service
