@@ -5,6 +5,14 @@ hostname: %NAME%
 ssh_authorized_keys:
 %SSH_KEYS%
 
+write_files:
+  - path: /etc/systemd/journald.conf
+    permissions: 0644
+    content: |
+      [Journal]
+      SystemMaxUse=50M
+      RuntimeMaxUse=50M
+
 coreos:
   etcd:
     name: %NAME%
