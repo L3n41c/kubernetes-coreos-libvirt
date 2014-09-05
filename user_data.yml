@@ -12,8 +12,6 @@ coreos:
     bind-addr: 0.0.0.0
     peer-addr: 192.168.10.%N%:7001
     discovery: %DISCOVERY%
-    peer-heartbeat-interval: 250
-    peer-election-timeout: 1000
   units:
     - name: static.network
       command: start
