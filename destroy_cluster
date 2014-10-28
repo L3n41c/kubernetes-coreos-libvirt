@@ -10,6 +10,7 @@ while virsh destroy coreos$(printf "%02d" $i) 2> /dev/null; do
     ((i++))
 done
 
+virsh pool-refresh $POOL > /dev/null
 i=1
 while virsh vol-delete coreos$(printf "%02d" $i).img --pool $POOL 2> /dev/null; do
     ((i++))

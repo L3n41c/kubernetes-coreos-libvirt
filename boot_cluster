@@ -56,10 +56,25 @@ for (( i = 1 ; i <= $NB_INST ; i++ )); do
     kub_path="$POOL_PATH/kubernetes"
     machines="$(echo -n '192.168.10.1'; for (( i = 2 ; i <= $NB_INST ; i++ )); do echo -n ",192.168.10.$i"; done)"
 
-    virsh vol-clone coreos_production_qemu_image.img $name.img --pool $POOL
-    sed -e "s|%N%|$i|; s|%NAME%|$name|; s|%IMAGE%|$image|; s|%CONFIG%|$config|; s|%KUB_PATH%|$kub_path|" < coreos.xml > .run/$name.xml
+    if [ -w "$POOL_PATH" ]; then
+        pushd "$POOL_PATH"
+        qemu-img create -f qcow2 -b coreos_production_qemu_image.img $name.img
+        popd
+    else
+        echo "You miss write access to $POOL_PATH to benefit from COW"
+        virsh vol-clone coreos_production_qemu_image.img $name.img --pool $POOL
+    fi
+    sed -e "s|%N%|$i|; \
+            s|%NAME%|$name|; \
+            s|%IMAGE%|$image|; \
+            s|%CONFIG%|$config|; \
+            s|%KUB_PATH%|$kub_path|" < coreos.xml > .run/$name.xml
     mkdir -p "$config/openstack/latest"
-    sed -e "s|%N%|$i|; s|%NAME%|$name|; s|%SSH_KEYS%|$(cat ~/.ssh/id_*.pub | sed 's/^/  - /')|; s|%DISCOVERY%|$discovery|; s|%MACHINES%|$machines|" < user_data.yml | \
+    sed -e "s|%N%|$i|; \
+            s|%NAME%|$name|; \
+            s|%SSH_KEYS%|$(cat ~/.ssh/id_*.pub | sed 's/^/  - /')|; \
+            s|%DISCOVERY%|$discovery|; \
+            s|%MACHINES%|$machines|" < user_data.yml | \
     ( if [ $i -eq 1 ]; then
         egrep -v "^%(END)?IF MASTER%$" ;
       else
