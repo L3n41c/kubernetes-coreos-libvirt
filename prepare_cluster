@@ -36,11 +36,13 @@ wget -N -P "$kub_path" http://storage.googleapis.com/kubernetes/controller-manag
 wget -N -P "$kub_path" http://storage.googleapis.com/kubernetes/kubecfg
 wget -N -P "$kub_path" http://storage.googleapis.com/kubernetes/kubelet
 wget -N -P "$kub_path" http://storage.googleapis.com/kubernetes/proxy
+wget -N -P "$kub_path" http://storage.googleapis.com/kubernetes/scheduler
 chmod +x "$kub_path/apiserver"
 chmod +x "$kub_path/controller-manager"
 chmod +x "$kub_path/kubecfg"
 chmod +x "$kub_path/kubelet"
 chmod +x "$kub_path/proxy"
+chmod +x "$kub_path/scheduler"
 
 #
 # Create a CoreOS config drive
