@@ -87,7 +87,7 @@ coreos:
         LimitNOFILE=1048576
         LimitNPROC=1048576
         ExecStartPre=/bin/mount --make-rprivate /
-        ExecStart=/usr/bin/docker --daemon --storage-driver=btrfs --host=fd:// --bridge=cbr0 --iptables=false --ip-masq=false
+        ExecStart=/usr/bin/docker --daemon --storage-driver=btrfs --host=fd:// --bridge=cbr0 --iptables=false
 
         [Install]
         WantedBy=multi-user.target
@@ -117,22 +117,21 @@ coreos:
         Options=ro,trans=virtio,version=9p2000.L
         Type=9p
 %IF MASTER%
-    - name: apiserver.service
+    - name: kube-apiserver.service
       command: start
       content: |
         [Unit]
-        After=opt-kubernetes.mount
-        ConditionFileIsExecutable=/opt/kubernetes/bin/apiserver
+        After=opt-kubernetes.mount etcd.service
+        ConditionFileIsExecutable=/opt/kubernetes/bin/kube-apiserver
         Description=Kubernetes API Server
         Documentation=https://github.com/GoogleCloudPlatform/kubernetes
-        Requires=opt-kubernetes.mount
+        Requires=opt-kubernetes.mount etcd.service
 
         [Service]
-        ExecStart=/opt/kubernetes/bin/apiserver \
+        ExecStart=/opt/kubernetes/bin/kube-apiserver \
         --address=127.0.0.1 \
         --port=8080 \
         --etcd_servers=http://127.0.0.1:4001 \
-        --machines=%MACHINES% \
         --kubelet_port=10250 \
         --portal_net=10.10.254.0/24 \
         --logtostderr=true
@@ -141,37 +140,38 @@ coreos:
 
         [Install]
         WantedBy=multi-user.target
-    - name: controller-manager.service
+    - name: kube-controller-manager.service
       command: start
       content: |
         [Unit]
-        After=opt-kubernetes.mount
-        ConditionFileIsExecutable=/opt/kubernetes/bin/controller-manager
+        After=opt-kubernetes.mount kube-apiserver.service
+        ConditionFileIsExecutable=/opt/kubernetes/bin/kube-controller-manager
         Description=Kubernetes Controller Manager
         Documentation=https://github.com/GoogleCloudPlatform/kubernetes
-        Requires=opt-kubernetes.mount
+        Requires=opt-kubernetes.mount kube-apiserver.service
 
         [Service]
-        ExecStart=/opt/kubernetes/bin/controller-manager \
+        ExecStart=/opt/kubernetes/bin/kube-controller-manager \
         --master=127.0.0.1:8080 \
+        --machines=%MACHINES% \
         --logtostderr=true
         Restart=always
         RestartSec=2
 
         [Install]
         WantedBy=multi-user.target
-    - name: scheduler.service
+    - name: kube-scheduler.service
       command: start
       content: |
         [Unit]
         After=opt-kubernetes.mount
-        ConditionFileIsExecutable=/opt/kubernetes/bin/scheduler
+        ConditionFileIsExecutable=/opt/kubernetes/bin/kube-scheduler
         Description=Kubernetes Scheduler
         Documentation=https://github.com/GoogleCloudPlatform/kubernetes
         Requires=opt-kubernetes.mount
 
         [Service]
-        ExecStart=/opt/kubernetes/bin/scheduler \
+        ExecStart=/opt/kubernetes/bin/kube-scheduler \
         --master=127.0.0.1:8080 \
         --logtostderr=true
         Restart=always
@@ -184,11 +184,11 @@ coreos:
       command: start
       content: |
         [Unit]
-        After=opt-kubernetes.mount
+        After=opt-kubernetes.mount docker.socket
         ConditionFileIsExecutable=/opt/kubernetes/bin/kubelet
         Description=Kubernetes Kubelet
         Documentation=https://github.com/GoogleCloudPlatform/kubernetes
-        Requires=opt-kubernetes.mount
+        Requires=opt-kubernetes.mount docker.socket
 
         [Service]
         ExecStart=/opt/kubernetes/bin/kubelet \
@@ -202,18 +202,18 @@ coreos:
 
         [Install]
         WantedBy=multi-user.target
-    - name: proxy.service
+    - name: kube-proxy.service
       command: start
       content: |
         [Unit]
         After=opt-kubernetes.mount
-        ConditionFileIsExecutable=/opt/kubernetes/bin/proxy
+        ConditionFileIsExecutable=/opt/kubernetes/bin/kube-proxy
         Description=Kubernetes Proxy
         Documentation=https://github.com/GoogleCloudPlatform/kubernetes
         Requires=opt-kubernetes.mount
 
         [Service]
-        ExecStart=/opt/kubernetes/bin/proxy --etcd_servers=http://127.0.0.1:4001 --logtostderr=true
+        ExecStart=/opt/kubernetes/bin/kube-proxy --etcd_servers=http://127.0.0.1:4001 --logtostderr=true
         Restart=always
         RestartSec=2
 
